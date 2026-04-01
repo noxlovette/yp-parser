@@ -36,7 +36,7 @@ pub struct Transaction {
     description: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum TxStatus {
     Success,
     Failure,
@@ -44,7 +44,7 @@ pub enum TxStatus {
     Pending,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum TxType {
     Deposit,
     #[default]
