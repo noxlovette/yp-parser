@@ -1,6 +1,6 @@
-use clap::{Parser, ValueEnum};
-use std::{fs::File, io::Read};
-use yp_parser::{BinaryParser, Format};
+use clap::{Parser as ClapParser, ValueEnum};
+use std::fs::File;
+use yp_parser::{BinaryParser, Format, Parser};
 
 #[derive(Debug, Clone, ValueEnum)]
 enum Codec {
@@ -8,7 +8,7 @@ enum Codec {
     Write,
 }
 
-#[derive(Parser, Debug)]
+#[derive(ClapParser, Debug)]
 #[command(version, about)]
 struct Args {
     #[arg(long, value_enum)]

@@ -1,5 +1,8 @@
 use clap::ValueEnum;
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    io::{Read, Write},
+};
 
 pub use binary::*;
 pub use error::*;
@@ -7,6 +10,11 @@ mod binary;
 mod csv;
 mod error;
 mod text;
+
+pub trait Parser: Sized {
+    fn from_read<R: Read>(r: &mut R) -> ReaderResult<Vec<Transaction>>;
+    fn write_to<W: Write>(w: &mut W, input: &[Transaction]) -> WriterResult<()>;
+}
 
 #[derive(Debug, Default, Clone, ValueEnum)]
 pub enum Format {

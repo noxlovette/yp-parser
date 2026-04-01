@@ -1,12 +1,12 @@
-use crate::{ParserError, ParserResult, Transaction, TxStatus, TxType, WriterResult};
+use crate::{Parser, ReaderError, ReaderResult, Transaction, TxStatus, TxType, WriterResult};
 use std::io::{Read, Write};
 
 /// Parses the .bin format
 pub struct BinaryParser;
 const MAGIC: &[u8; 4] = b"YPBN";
 
-impl BinaryParser {
-    pub fn from_read<R: Read>(r: &mut R) -> ParserResult<Vec<Transaction>> {
+impl Parser for BinaryParser {
+    fn from_read<R: Read>(r: &mut R) -> ReaderResult<Vec<Transaction>> {
         let mut output = Vec::new();
 
         loop {
@@ -23,7 +23,7 @@ impl BinaryParser {
             }
 
             if magic != *MAGIC {
-                return Err(ParserError::Transaction);
+                return Err(ReaderError::Transaction);
             }
 
             let mut len = [0u8; 4];
@@ -38,7 +38,7 @@ impl BinaryParser {
         Ok(output)
     }
 
-    pub fn write_to<W: Write>(w: &mut W, input: &[Transaction]) -> WriterResult<()> {
+    fn write_to<W: Write>(w: &mut W, input: &[Transaction]) -> WriterResult<()> {
         for tx in input {
             tx.write_bin(w)?;
         }
@@ -49,28 +49,28 @@ impl BinaryParser {
 }
 
 impl TryFrom<&[u8]> for Transaction {
-    type Error = ParserError;
+    type Error = ReaderError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         let mut cursor = 0;
 
-        fn take<const N: usize>(bytes: &[u8], cursor: &mut usize) -> ParserResult<[u8; N]> {
+        fn take<const N: usize>(bytes: &[u8], cursor: &mut usize) -> ReaderResult<[u8; N]> {
             let slice = bytes
                 .get(*cursor..*cursor + N)
-                .ok_or(ParserError::Transaction)?;
+                .ok_or(ReaderError::Transaction)?;
             *cursor += N;
             Ok(slice.try_into()?)
         }
 
         let tx_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let tx_type = *bytes.get(cursor).ok_or(ParserError::Transaction)?;
+        let tx_type = *bytes.get(cursor).ok_or(ReaderError::Transaction)?;
         cursor += 1;
         let tx_type = tx_type.try_into()?;
         let from_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
         let to_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
         let amount = i64::from_be_bytes(take(bytes, &mut cursor)?);
         let timestamp = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let status = *bytes.get(cursor).ok_or(ParserError::Transaction)?;
+        let status = *bytes.get(cursor).ok_or(ReaderError::Transaction)?;
         cursor += 1;
         let status = status.try_into()?;
         let desc_len = u32::from_be_bytes(take(bytes, &mut cursor)?) as usize;
@@ -79,13 +79,13 @@ impl TryFrom<&[u8]> for Transaction {
         } else {
             let desc_bytes = bytes
                 .get(cursor..cursor + desc_len)
-                .ok_or(ParserError::Transaction)?;
+                .ok_or(ReaderError::Transaction)?;
             cursor += desc_len;
             Some(str::from_utf8(desc_bytes)?.to_string())
         };
 
         if cursor != bytes.len() {
-            return Err(ParserError::Transaction);
+            return Err(ReaderError::Transaction);
         }
 
         Ok(Self {
@@ -102,14 +102,14 @@ impl TryFrom<&[u8]> for Transaction {
 }
 
 impl TryFrom<u8> for TxType {
-    type Error = ParserError;
+    type Error = ReaderError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Self::Deposit),
             1 => Ok(Self::Transfer),
             2 => Ok(Self::Withdrawal),
-            _ => Err(ParserError::TxType),
+            _ => Err(ReaderError::TxType),
         }
     }
 }
@@ -125,14 +125,14 @@ impl From<TxType> for u8 {
 }
 
 impl TryFrom<u8> for TxStatus {
-    type Error = ParserError;
+    type Error = ReaderError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(Self::Success),
             1 => Ok(Self::Failure),
             2 => Ok(Self::Pending),
-            _ => Err(ParserError::TxStatus),
+            _ => Err(ReaderError::TxStatus),
         }
     }
 }
@@ -272,7 +272,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ParserError::Transaction));
+        assert!(matches!(err, ReaderError::Transaction));
     }
 
     #[test]
@@ -292,7 +292,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ParserError::Io(_)));
+        assert!(matches!(err, ReaderError::Io(_)));
     }
 
     #[test]
@@ -312,7 +312,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ParserError::TxType));
+        assert!(matches!(err, ReaderError::TxType));
     }
 
     #[test]
@@ -332,7 +332,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ParserError::TxStatus));
+        assert!(matches!(err, ReaderError::TxStatus));
     }
 
     #[test]
@@ -355,7 +355,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ParserError::Transaction));
+        assert!(matches!(err, ReaderError::Transaction));
     }
 
     #[test]
@@ -376,7 +376,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ParserError::Utf(_)));
+        assert!(matches!(err, ReaderError::Utf(_)));
     }
 
     #[test]
