@@ -1,10 +1,11 @@
 use crate::{ParserError, ParserResult, Transaction, TxStatus, TxType};
 use std::io::{BufReader, Read};
 
-pub(crate) struct Binary;
+/// Parses the .bin format
+pub struct BinaryParser;
 
-impl Binary {
-    pub(crate) fn from_read<R: Read>(r: &mut R) -> ParserResult<Vec<Transaction>> {
+impl BinaryParser {
+    pub fn from_read<R: Read>(r: &mut R) -> ParserResult<Vec<Transaction>> {
         const MAGIC: [u8; 4] = *b"YPBN";
         let mut reader = BufReader::new(r);
         let mut output = Vec::new();

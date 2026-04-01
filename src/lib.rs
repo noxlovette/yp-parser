@@ -1,11 +1,14 @@
+use clap::ValueEnum;
+use std::fmt::Display;
+
+pub use binary::*;
 pub use error::*;
-use std::io::{Read, Write};
 mod binary;
 mod csv;
 mod error;
 mod text;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, ValueEnum)]
 pub enum Format {
     Csv,
     #[default]
@@ -14,13 +17,6 @@ pub enum Format {
 }
 
 impl Transaction {
-    pub fn from_read<R: Read>(r: &mut R, fmt: Format) -> ParserResult<Self> {
-        todo!()
-    }
-    pub fn write_to<W: Write>(&mut self, w: &mut W, fmt: Format) -> ParserResult<()> {
-        todo!()
-    }
-
     pub fn new() -> Self {
         Default::default()
     }
@@ -54,4 +50,45 @@ pub enum TxType {
     #[default]
     Transfer,
     Withdrawal,
+}
+
+impl Display for Transaction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "TX ID: {}", self.tx_id)?;
+        writeln!(f, "TX TYPE: {}", self.tx_type)?;
+        writeln!(f, "FROM: {}", self.from_user_id)?;
+        writeln!(f, "TO: {}", self.to_user_id)?;
+        writeln!(f, "AMOUNT: {}", self.amount)?;
+        writeln!(f, "TIMESTAMP: {}", self.timestamp)?;
+        writeln!(f, "STATUS: {}", self.status)?;
+        if let Some(desc) = &self.description {
+            writeln!(f, "DESCRIPTION: {}", desc)?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for TxStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TxStatus::*;
+        let txt = match self {
+            Success => "SUCCESS",
+            Failure => "FAILURE",
+            Pending => "PENDING",
+        };
+
+        write!(f, "{txt}")
+    }
+}
+
+impl Display for TxType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TxType::*;
+        let txt = match self {
+            Deposit => "DEPOSIT",
+            Transfer => "TRANSFER",
+            Withdrawal => "WITHDRAWAL",
+        };
+        write!(f, "{txt}")
+    }
 }
