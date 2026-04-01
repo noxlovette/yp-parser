@@ -2,10 +2,12 @@ use clap::ValueEnum;
 use std::{
     fmt::Display,
     io::{Read, Write},
+    str::FromStr,
 };
 
-pub use binary::*;
+pub use binary::BinaryParser;
 pub use error::*;
+pub use text::TextParser;
 mod binary;
 mod csv;
 mod error;
@@ -98,5 +100,45 @@ impl Display for TxType {
             Withdrawal => "WITHDRAWAL",
         };
         write!(f, "{txt}")
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct TransactionPartial {
+    tx_id: Option<u64>,
+    tx_type: Option<TxType>,
+    from_user_id: Option<u64>,
+    to_user_id: Option<u64>,
+    amount: Option<i64>,
+    timestamp: Option<u64>,
+    status: Option<TxStatus>,
+    description: Option<String>,
+}
+
+impl FromStr for TxType {
+    type Err = ReaderError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use TxType::*;
+        let t = match s {
+            "DEPOSIT" => Deposit,
+            "TRANSFER" => Transfer,
+            "WITHDRAWAL" => Withdrawal,
+            _ => return Err(ReaderError::TxType),
+        };
+        Ok(t)
+    }
+}
+
+impl FromStr for TxStatus {
+    type Err = ReaderError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use TxStatus::*;
+        let t = match s {
+            "SUCCESS" => Success,
+            "FAILURE" => Failure,
+            "PENDING" => Pending,
+            _ => return Err(ReaderError::TxStatus),
+        };
+        Ok(t)
     }
 }

@@ -1,4 +1,4 @@
-use std::{array::TryFromSliceError, io, str::Utf8Error};
+use std::{array::TryFromSliceError, io, num::ParseIntError, str::Utf8Error};
 use thiserror::Error;
 pub type ParserResult<T> = Result<T, ParserError>;
 pub type WriterResult<T> = Result<T, WriterError>;
@@ -24,6 +24,8 @@ pub enum ReaderError {
     Io(#[from] io::Error),
     #[error("slice error")]
     Slice(#[from] TryFromSliceError),
+    #[error("int error")]
+    Int(#[from] ParseIntError),
     #[error("transaction error")]
     Transaction,
     #[error("TxType parsing error")]
@@ -32,4 +34,8 @@ pub enum ReaderError {
     TxStatus,
     #[error("utf8 error")]
     Utf(#[from] Utf8Error),
+    #[error("unknown field name")]
+    Field,
+    #[error("corrupted text file")]
+    TextCorrupt,
 }

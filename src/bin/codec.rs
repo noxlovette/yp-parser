@@ -1,6 +1,6 @@
 use clap::{Parser as ClapParser, ValueEnum};
 use std::fs::File;
-use yp_parser::{BinaryParser, Format, Parser};
+use yp_parser::{BinaryParser, Format, Parser, TextParser};
 
 #[derive(Debug, Clone, ValueEnum)]
 enum Codec {
@@ -11,10 +11,10 @@ enum Codec {
 #[derive(ClapParser, Debug)]
 #[command(version, about)]
 struct Args {
-    #[arg(long, value_enum)]
+    #[arg(value_enum)]
     format: Format,
 
-    #[arg(short, value_enum)]
+    #[arg(value_enum)]
     codec: Codec,
 
     path: String,
@@ -28,6 +28,7 @@ fn main() -> anyhow::Result<()> {
         Codec::Read => {
             let output = match args.format {
                 Format::Binary => BinaryParser::from_read(&mut file)?,
+                Format::Txt => TextParser::from_read(&mut file)?,
                 _ => todo!(),
             };
 
