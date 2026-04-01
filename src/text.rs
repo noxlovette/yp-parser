@@ -1,6 +1,5 @@
-use std::str::FromStr;
-
 use crate::{Parser, ReaderError, Transaction, TransactionPartial, TxStatus, TxType};
+use std::str::FromStr;
 
 pub struct TextParser;
 
@@ -46,7 +45,13 @@ impl Parser for TextParser {
         w: &mut W,
         input: &[crate::Transaction],
     ) -> crate::WriterResult<()> {
-        todo!()
+        for tx in input {
+            w.write_all(format!("{tx}").as_bytes())?;
+            w.write_all(format!("\n").as_bytes())?;
+        }
+        w.flush()?;
+
+        Ok(())
     }
 }
 
