@@ -35,6 +35,10 @@ impl Parser for TextParser {
             tx.set_field(trm.parse()?);
         }
 
+        if !tx.is_empty() {
+            output.push(tx.try_into()?);
+        }
+
         Ok(output)
     }
 
@@ -70,6 +74,17 @@ impl FromStr for Fields {
 }
 
 impl TransactionPartial {
+    fn is_empty(&self) -> bool {
+        self.tx_id.is_none()
+            && self.tx_type.is_none()
+            && self.from_user_id.is_none()
+            && self.to_user_id.is_none()
+            && self.amount.is_none()
+            && self.timestamp.is_none()
+            && self.status.is_none()
+            && self.description.is_none()
+    }
+
     fn set_field(&mut self, field: Fields) {
         use Fields::*;
         match field {
@@ -140,5 +155,123 @@ impl TryFrom<TransactionPartial> for Transaction {
             status: value.status.ok_or_else(|| Transaction)?,
             description: value.description,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    fn parse(input: &str) -> crate::ReaderResult<Vec<Transaction>> {
+        TextParser::from_read(&mut Cursor::new(input.as_bytes()))
+    }
+
+    #[test]
+    fn parses_multiple_transactions_with_comments_and_description() {
+        let input = r#"# comment before first transaction
+TX_ID: 1
+TX_TYPE: DEPOSIT
+FROM_USER_ID: 0
+TO_USER_ID: 77
+AMOUNT: 1500
+TIMESTAMP: 1700000000
+STATUS: SUCCESS
+DESCRIPTION: "initial deposit"
+
+# separator comment
+TX_ID: 2
+TX_TYPE: TRANSFER
+FROM_USER_ID: 77
+TO_USER_ID: 88
+AMOUNT: -250
+TIMESTAMP: 1700000100
+STATUS: PENDING
+"#;
+
+        let parsed = parse(input).unwrap();
+
+        assert_eq!(parsed.len(), 2);
+
+        let first = &parsed[0];
+        assert_eq!(first.tx_id, 1);
+        assert!(matches!(first.tx_type, TxType::Deposit));
+        assert_eq!(first.from_user_id, 0);
+        assert_eq!(first.to_user_id, 77);
+        assert_eq!(first.amount, 1500);
+        assert_eq!(first.timestamp, 1_700_000_000);
+        assert!(matches!(first.status, TxStatus::Success));
+        assert_eq!(first.description.as_deref(), Some("initial deposit"));
+
+        let second = &parsed[1];
+        assert_eq!(second.tx_id, 2);
+        assert!(matches!(second.tx_type, TxType::Transfer));
+        assert_eq!(second.from_user_id, 77);
+        assert_eq!(second.to_user_id, 88);
+        assert_eq!(second.amount, -250);
+        assert_eq!(second.timestamp, 1_700_000_100);
+        assert!(matches!(second.status, TxStatus::Pending));
+        assert_eq!(second.description, None);
+    }
+
+    #[test]
+    fn parses_last_transaction_without_trailing_blank_line() {
+        let input = r#"TX_ID: 9
+TX_TYPE: WITHDRAWAL
+FROM_USER_ID: 55
+TO_USER_ID: 0
+AMOUNT: -500
+TIMESTAMP: 1700000200
+STATUS: FAILURE"#;
+
+        let parsed = parse(input).unwrap();
+
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].tx_id, 9);
+        assert!(matches!(parsed[0].tx_type, TxType::Withdrawal));
+        assert!(matches!(parsed[0].status, TxStatus::Failure));
+    }
+
+    #[test]
+    fn rejects_unknown_field_name() {
+        let input = r#"TX_ID: 1
+TX_TYPE: DEPOSIT
+FROM_USER_ID: 0
+TO_USER_ID: 77
+AMOUNT: 1500
+TIMESTAMP: 1700000000
+STATUS: SUCCESS
+NOTE: nope
+"#;
+
+        let err = parse(input).unwrap_err();
+
+        assert!(matches!(err, ReaderError::Field));
+    }
+
+    #[test]
+    fn rejects_incomplete_transaction() {
+        let input = r#"TX_ID: 1
+TX_TYPE: DEPOSIT
+FROM_USER_ID: 0
+TO_USER_ID: 77
+AMOUNT: 1500
+TIMESTAMP: 1700000000
+"#;
+
+        let err = parse(input).unwrap_err();
+
+        assert!(matches!(err, ReaderError::Transaction));
+    }
+
+    #[test]
+    fn rejects_corrupted_text_line() {
+        let input = r#"TX_ID 1
+TX_TYPE: DEPOSIT
+"#;
+
+        let err = parse(input).unwrap_err();
+
+        assert!(matches!(err, ReaderError::TextCorrupt));
     }
 }
