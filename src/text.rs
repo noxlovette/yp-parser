@@ -47,7 +47,7 @@ impl Parser for TextParser {
     ) -> crate::WriterResult<()> {
         for tx in input {
             w.write_all(format!("{tx}").as_bytes())?;
-            w.write_all("\n".to_string().as_bytes())?;
+            w.write_all("\n".as_bytes())?;
         }
         w.flush()?;
 

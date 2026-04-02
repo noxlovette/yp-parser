@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use clap::Parser as ClapParser;
-use yp_parser::{BinaryParser, Format, Parser, TextParser};
+use yp_parser::{BinaryParser, CsvParser, Format, Parser, TextParser};
 
 #[derive(Debug, ClapParser)]
 #[command(version, about)]
@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
     let decoded = match args.input_format {
         Binary => BinaryParser::from_read(&mut buf)?,
         Txt => TextParser::from_read(&mut buf)?,
-        _ => todo!(),
+        Csv => CsvParser::from_read(&mut buf)?,
     };
 
     let stdout = std::io::stdout();
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     match args.output_format {
         Binary => BinaryParser::write_to(&mut handle, &decoded)?,
         Txt => TextParser::write_to(&mut handle, &decoded)?,
-        _ => todo!(),
+        Csv => CsvParser::write_to(&mut handle, &decoded)?,
     }
 
     Ok(())

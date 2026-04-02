@@ -92,6 +92,17 @@ impl Display for TxStatus {
     }
 }
 
+impl TxStatus {
+    pub fn as_str(&self) -> &'static str {
+        use TxStatus::*;
+        match self {
+            Success => "SUCCESS",
+            Failure => "FAILURE",
+            Pending => "PENDING",
+        }
+    }
+}
+
 impl Display for TxType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TxType::*;
@@ -101,6 +112,17 @@ impl Display for TxType {
             Withdrawal => "WITHDRAWAL",
         };
         write!(f, "{txt}")
+    }
+}
+
+impl TxType {
+    fn as_str(&self) -> &'static str {
+        use TxType::*;
+        match self {
+            Deposit => "DEPOSIT",
+            Transfer => "TRANSFER",
+            Withdrawal => "WITHDRAWAL",
+        }
     }
 }
 
