@@ -175,7 +175,7 @@ impl Transaction {
 mod tests {
     use super::*;
     use std::io::Cursor;
-
+    #[allow(clippy::too_many_arguments)]
     fn tx(
         tx_id: u64,
         tx_type: TxType,

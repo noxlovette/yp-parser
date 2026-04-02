@@ -47,7 +47,7 @@ impl Parser for TextParser {
     ) -> crate::WriterResult<()> {
         for tx in input {
             w.write_all(format!("{tx}").as_bytes())?;
-            w.write_all(format!("\n").as_bytes())?;
+            w.write_all("\n".to_string().as_bytes())?;
         }
         w.flush()?;
 
@@ -60,7 +60,7 @@ impl FromStr for Fields {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         use Fields::*;
 
-        let (identifier, value) = s.split_once(": ").ok_or_else(|| ReaderError::TextCorrupt)?;
+        let (identifier, value) = s.split_once(": ").ok_or(ReaderError::TextCorrupt)?;
 
         let t = match identifier {
             "TX_ID" => TxId(u64::from_str(value)?),
@@ -126,9 +126,11 @@ impl TransactionPartial {
     fn tx_type(&mut self, tx_type: TxType) {
         self.tx_type = Some(tx_type);
     }
+    #[allow(clippy::wrong_self_convention)]
     fn from_user_id(&mut self, fui: u64) {
         self.from_user_id = Some(fui)
     }
+    #[allow(clippy::wrong_self_convention)]
     fn to_user_id(&mut self, tui: u64) {
         self.to_user_id = Some(tui)
     }
@@ -151,13 +153,13 @@ impl TryFrom<TransactionPartial> for Transaction {
     fn try_from(value: TransactionPartial) -> Result<Self, Self::Error> {
         use ReaderError::Transaction;
         Ok(Self {
-            tx_id: value.tx_id.ok_or_else(|| Transaction)?,
-            tx_type: value.tx_type.ok_or_else(|| Transaction)?,
-            from_user_id: value.from_user_id.ok_or_else(|| Transaction)?,
-            to_user_id: value.to_user_id.ok_or_else(|| Transaction)?,
-            amount: value.amount.ok_or_else(|| Transaction)?,
-            timestamp: value.timestamp.ok_or_else(|| Transaction)?,
-            status: value.status.ok_or_else(|| Transaction)?,
+            tx_id: value.tx_id.ok_or(Transaction)?,
+            tx_type: value.tx_type.ok_or(Transaction)?,
+            from_user_id: value.from_user_id.ok_or(Transaction)?,
+            to_user_id: value.to_user_id.ok_or(Transaction)?,
+            amount: value.amount.ok_or(Transaction)?,
+            timestamp: value.timestamp.ok_or(Transaction)?,
+            status: value.status.ok_or(Transaction)?,
             description: value.description,
         })
     }

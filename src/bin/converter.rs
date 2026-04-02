@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
+use std::{fs::File, io::BufReader};
 
 use clap::Parser as ClapParser;
 use yp_parser::{BinaryParser, Format, Parser, TextParser};
@@ -22,7 +19,7 @@ struct Args {
 fn main() -> anyhow::Result<()> {
     use Format::*;
     let args = Args::parse();
-    let mut file = File::open(args.input)?;
+    let file = File::open(args.input)?;
     let mut buf = BufReader::new(file);
 
     let decoded = match args.input_format {
