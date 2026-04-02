@@ -6,6 +6,7 @@ use std::{
 };
 
 pub use binary::BinaryParser;
+pub use csv::CsvParser;
 pub use error::*;
 pub use text::TextParser;
 mod binary;
@@ -140,5 +141,62 @@ impl FromStr for TxStatus {
             _ => return Err(ReaderError::TxStatus),
         };
         Ok(t)
+    }
+}
+
+impl TransactionPartial {
+    fn is_empty(&self) -> bool {
+        self.tx_id.is_none()
+            && self.tx_type.is_none()
+            && self.from_user_id.is_none()
+            && self.to_user_id.is_none()
+            && self.amount.is_none()
+            && self.timestamp.is_none()
+            && self.status.is_none()
+            && self.description.is_none()
+    }
+
+    fn tx_id(&mut self, tx_id: u64) {
+        self.tx_id = Some(tx_id);
+    }
+    fn tx_type(&mut self, tx_type: TxType) {
+        self.tx_type = Some(tx_type);
+    }
+    #[allow(clippy::wrong_self_convention)]
+    fn from_user_id(&mut self, fui: u64) {
+        self.from_user_id = Some(fui)
+    }
+    #[allow(clippy::wrong_self_convention)]
+    fn to_user_id(&mut self, tui: u64) {
+        self.to_user_id = Some(tui)
+    }
+    fn amount(&mut self, a: i64) {
+        self.amount = Some(a)
+    }
+    fn timestamp(&mut self, t: u64) {
+        self.timestamp = Some(t)
+    }
+    fn status(&mut self, s: TxStatus) {
+        self.status = Some(s)
+    }
+    fn description(&mut self, d: Option<String>) {
+        self.description = d
+    }
+}
+
+impl TryFrom<TransactionPartial> for Transaction {
+    type Error = ReaderError;
+    fn try_from(value: TransactionPartial) -> Result<Self, Self::Error> {
+        use ReaderError::Transaction;
+        Ok(Self {
+            tx_id: value.tx_id.ok_or(Transaction)?,
+            tx_type: value.tx_type.ok_or(Transaction)?,
+            from_user_id: value.from_user_id.ok_or(Transaction)?,
+            to_user_id: value.to_user_id.ok_or(Transaction)?,
+            amount: value.amount.ok_or(Transaction)?,
+            timestamp: value.timestamp.ok_or(Transaction)?,
+            status: value.status.ok_or(Transaction)?,
+            description: value.description,
+        })
     }
 }

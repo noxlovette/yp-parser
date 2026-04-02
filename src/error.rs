@@ -38,4 +38,6 @@ pub enum ReaderError {
     Field,
     #[error("corrupted text file")]
     TextCorrupt,
+    #[error("corrupted csv file")]
+    CsvCorrupt,
 }
