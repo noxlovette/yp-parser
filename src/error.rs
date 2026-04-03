@@ -4,12 +4,14 @@ use thiserror::Error;
 pub(crate) type WriterResult<T> = Result<T, WriterError>;
 pub(crate) type ReaderResult<T> = Result<T, ReaderError>;
 
+/// Ошибки записи транзакций.
 #[derive(Debug, Error)]
 pub enum WriterError {
     #[error("io error")]
     Io(#[from] io::Error),
 }
 
+/// Ошибки чтения транзакций.
 #[derive(Debug, Error)]
 pub enum ReaderError {
     #[error("IO error")]

@@ -1,3 +1,8 @@
+//! Библиотека для чтения и записи транзакций в форматах `binary`, `csv` и `txt`.
+//!
+//! Основная точка входа в API — трейт [`Parser`] и конкретные реализации:
+//! [`BinaryParser`], [`CsvParser`] и [`TextParser`].
+
 use clap::ValueEnum;
 use std::{
     fmt::Display,
@@ -14,52 +19,79 @@ mod csv;
 mod error;
 mod text;
 
+/// Общий трейт для чтения и записи набора транзакций.
 pub trait Parser: Sized {
+    /// Считывает все транзакции из входного потока.
     fn from_read<R: Read>(r: &mut R) -> ReaderResult<Vec<Transaction>>;
+
+    /// Записывает все транзакции в указанный выходной поток.
     fn write_to<W: Write>(w: &mut W, input: &[Transaction]) -> WriterResult<()>;
 }
 
+/// Поддерживаемые форматы сериализации.
 #[derive(Debug, Default, Clone, ValueEnum)]
 pub enum Format {
+    /// CSV-представление с заголовком.
     Csv,
+    /// Бинарный формат с сигнатурой `YPBN`.
     #[default]
     Binary,
+    /// Человекочитаемый текстовый формат.
     Txt,
 }
 
 impl Transaction {
+    /// Создает транзакцию со значениями по умолчанию.
     pub fn new() -> Self {
         Default::default()
     }
 }
 
+/// Транзакция в нормализованном внутреннем представлении.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Transaction {
+    /// Уникальный идентификатор транзакции.
     tx_id: u64,
+    /// Тип транзакции.
     tx_type: TxType,
-    /// 0 for deposits
+    /// Идентификатор пользователя-отправителя. Для системных пополнений (`DEPOSIT`) может быть `0`.
     from_user_id: u64,
-    /// 0 for withdrawals
+    /// Идентификатор пользователя-получателя. Для системных списаний (`WITHDRAWAL`) может быть `0`.
     to_user_id: u64,
-    amount: i64,
+    /// Сумма транзакции в наименьших единицах валюты (например, в центах).
+    ///
+    /// *Вопрос! Согласно спецификации, должен быть негативным i64 только для бинарного формата, и u64 для остальных двух.
+    /// Я решил использовать i128, чтобы удовлетворить спецификацию и при этом использовать одну структуру на весь крейт*
+    amount: i128,
+    /// Время совершения транзакции в формате Unix-времени (миллисекунды с начала эпохи).
     timestamp: u64,
+    /// Статус транзакции.
     status: TxStatus,
+    /// Текстовое описание транзакции.
     description: Option<String>,
 }
 
+/// Статус транзакции.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TxStatus {
+    /// Транзакция завершилась успешно.
     Success,
+    /// Транзакция завершилась ошибкой.
     Failure,
+    /// Транзакция еще не завершена.
     #[default]
     Pending,
 }
 
+/// Тип транзакции.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TxType {
+    /// Пополнение счета.
     Deposit,
+    /// Перевод между пользователями.
     #[default]
     Transfer,
+    /// Списание средств.
     Withdrawal,
 }
 
@@ -93,7 +125,7 @@ impl Display for TxStatus {
 }
 
 impl TxStatus {
-    pub fn as_str(&self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         use TxStatus::*;
         match self {
             Success => "SUCCESS",
@@ -132,7 +164,7 @@ pub(crate) struct TransactionPartial {
     tx_type: Option<TxType>,
     from_user_id: Option<u64>,
     to_user_id: Option<u64>,
-    amount: Option<i64>,
+    amount: Option<i128>,
     timestamp: Option<u64>,
     status: Option<TxStatus>,
     description: Option<String>,
@@ -192,7 +224,7 @@ impl TransactionPartial {
     fn to_user_id(&mut self, tui: u64) {
         self.to_user_id = Some(tui)
     }
-    fn amount(&mut self, a: i64) {
+    fn amount(&mut self, a: i128) {
         self.amount = Some(a)
     }
     fn timestamp(&mut self, t: u64) {

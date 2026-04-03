@@ -1,7 +1,7 @@
 use crate::{Parser, ReaderError, ReaderResult, Transaction, TxStatus, TxType, WriterResult};
 use std::io::{Read, Write};
 
-/// Parses the .bin format
+/// Парсер бинарного формата `.bin`.
 pub struct BinaryParser;
 const MAGIC: &[u8; 4] = b"YPBN";
 
@@ -63,7 +63,7 @@ impl TryFrom<&[u8]> for Transaction {
         let tx_type = tx_type.try_into()?;
         let from_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
         let to_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let amount = i64::from_be_bytes(take(bytes, &mut cursor)?);
+        let amount = i128::from_be_bytes(take(bytes, &mut cursor)?);
         let timestamp = u64::from_be_bytes(take(bytes, &mut cursor)?);
         let status = *bytes.get(cursor).ok_or(ReaderError::Transaction)?;
         cursor += 1;
@@ -143,8 +143,7 @@ impl From<TxStatus> for u8 {
 }
 
 impl Transaction {
-    /// Writes bytes
-    pub fn write_bin(&self, w: &mut impl Write) -> WriterResult<()> {
+    fn write_bin(&self, w: &mut impl Write) -> WriterResult<()> {
         let mut p = Vec::new();
         p.extend_from_slice(&self.tx_id.to_be_bytes());
         p.push(self.tx_type.into());
@@ -176,7 +175,7 @@ mod tests {
         tx_type: TxType,
         from_user_id: u64,
         to_user_id: u64,
-        amount: i64,
+        amount: i128,
         timestamp: u64,
         status: TxStatus,
         description: Option<&str>,

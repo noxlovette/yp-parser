@@ -1,4 +1,6 @@
 use crate::{Parser, ReaderError, ReaderResult, Transaction, TransactionPartial};
+
+/// Парсер CSV-формата.
 pub struct CsvParser;
 
 const HEADER: &str = "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
@@ -152,7 +154,7 @@ mod tests {
         tx_type: TxType,
         from_user_id: u64,
         to_user_id: u64,
-        amount: i64,
+        amount: i128,
         timestamp: u64,
         status: TxStatus,
         description: Option<&str>,

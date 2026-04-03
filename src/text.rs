@@ -1,6 +1,7 @@
 use crate::{Parser, ReaderError, Transaction, TransactionPartial, TxStatus, TxType};
 use std::str::FromStr;
 
+/// Парсер текстового формата.
 pub struct TextParser;
 
 enum Fields {
@@ -8,7 +9,7 @@ enum Fields {
     TxType(TxType),
     FromUserId(u64),
     ToUserId(u64),
-    Amount(i64),
+    Amount(i128),
     Timestamp(u64),
     Status(TxStatus),
     Description(Option<String>),
@@ -121,7 +122,7 @@ mod tests {
         tx_type: TxType,
         from_user_id: u64,
         to_user_id: u64,
-        amount: i64,
+        amount: i128,
         timestamp: u64,
         status: TxStatus,
         description: Option<&str>,
