@@ -33,7 +33,7 @@ impl Transaction {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct Transaction {
     tx_id: u64,
     tx_type: TxType,
@@ -47,7 +47,7 @@ pub struct Transaction {
     description: Option<String>,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TxStatus {
     Success,
     Failure,
@@ -55,7 +55,7 @@ pub enum TxStatus {
     Pending,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TxType {
     Deposit,
     #[default]
@@ -65,15 +65,15 @@ pub enum TxType {
 
 impl Display for Transaction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "TX ID: {}", self.tx_id)?;
-        writeln!(f, "TX TYPE: {}", self.tx_type)?;
-        writeln!(f, "FROM: {}", self.from_user_id)?;
-        writeln!(f, "TO: {}", self.to_user_id)?;
+        writeln!(f, "TX_ID: {}", self.tx_id)?;
+        writeln!(f, "TX_TYPE: {}", self.tx_type)?;
+        writeln!(f, "FROM_USER_ID: {}", self.from_user_id)?;
+        writeln!(f, "TO_USER_ID: {}", self.to_user_id)?;
         writeln!(f, "AMOUNT: {}", self.amount)?;
         writeln!(f, "TIMESTAMP: {}", self.timestamp)?;
         writeln!(f, "STATUS: {}", self.status)?;
         if let Some(desc) = &self.description {
-            writeln!(f, "DESCRIPTION: {}", desc)?;
+            writeln!(f, "DESCRIPTION: \"{desc}\"",)?;
         }
         Ok(())
     }

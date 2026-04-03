@@ -1,16 +1,8 @@
 use std::{array::TryFromSliceError, io, num::ParseIntError, str::Utf8Error};
 use thiserror::Error;
-pub type ParserResult<T> = Result<T, ParserError>;
-pub type WriterResult<T> = Result<T, WriterError>;
-pub type ReaderResult<T> = Result<T, ReaderError>;
 
-#[derive(Error, Debug)]
-pub enum ParserError {
-    #[error("reader error")]
-    Reader(#[from] ReaderError),
-    #[error("writer error")]
-    Writer(#[from] WriterError),
-}
+pub(crate) type WriterResult<T> = Result<T, WriterError>;
+pub(crate) type ReaderResult<T> = Result<T, ReaderError>;
 
 #[derive(Debug, Error)]
 pub enum WriterError {
@@ -20,24 +12,24 @@ pub enum WriterError {
 
 #[derive(Debug, Error)]
 pub enum ReaderError {
-    #[error("io error")]
+    #[error("IO error")]
     Io(#[from] io::Error),
-    #[error("slice error")]
+    #[error("Slice parsing error")]
     Slice(#[from] TryFromSliceError),
-    #[error("int error")]
+    #[error("Int parsing error")]
     Int(#[from] ParseIntError),
-    #[error("transaction error")]
+    #[error("Transaction parsing error")]
     Transaction,
     #[error("TxType parsing error")]
     TxType,
     #[error("TxStatus parsing error")]
     TxStatus,
-    #[error("utf8 error")]
+    #[error("UTF8 error")]
     Utf(#[from] Utf8Error),
-    #[error("unknown field name")]
+    #[error("Unknown field name")]
     Field,
-    #[error("corrupted text file")]
+    #[error("Corrupted TXT file")]
     TextCorrupt,
-    #[error("corrupted csv file")]
+    #[error("Corrupted CSV file")]
     CsvCorrupt,
 }

@@ -81,7 +81,7 @@ impl TryFrom<&[u8]> for Transaction {
                 .get(cursor..cursor + desc_len)
                 .ok_or(ReaderError::Transaction)?;
             cursor += desc_len;
-            Some(str::from_utf8(desc_bytes)?.to_string())
+            Some(str::from_utf8(desc_bytes)?.trim_matches('"').to_string())
         };
 
         if cursor != bytes.len() {

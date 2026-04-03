@@ -115,13 +115,42 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
-    fn parse(input: &str) -> crate::ReaderResult<Vec<Transaction>> {
-        TextParser::from_read(&mut Cursor::new(input.as_bytes()))
+    #[allow(clippy::too_many_arguments)]
+    fn tx(
+        tx_id: u64,
+        tx_type: TxType,
+        from_user_id: u64,
+        to_user_id: u64,
+        amount: i64,
+        timestamp: u64,
+        status: TxStatus,
+        description: Option<&str>,
+    ) -> Transaction {
+        Transaction {
+            tx_id,
+            tx_type,
+            from_user_id,
+            to_user_id,
+            amount,
+            timestamp,
+            status,
+            description: description.map(str::to_owned),
+        }
+    }
+
+    fn parse_bytes(input: &[u8]) -> crate::ReaderResult<Vec<Transaction>> {
+        TextParser::from_read(&mut Cursor::new(input))
+    }
+
+    fn write_bytes(input: &[Transaction]) -> Vec<u8> {
+        let mut cursor = Cursor::new(Vec::new());
+        TextParser::write_to(&mut cursor, input).unwrap();
+        cursor.into_inner()
     }
 
     #[test]
-    fn parses_multiple_transactions_with_comments_and_description() {
-        let input = r#"# comment before first transaction
+    fn parses_multiple_transactions_from_cursor() {
+        let input = br#"# comment before first transaction
 TX_ID: 1
 TX_TYPE: DEPOSIT
 FROM_USER_ID: 0
@@ -141,7 +170,7 @@ TIMESTAMP: 1700000100
 STATUS: PENDING
 "#;
 
-        let parsed = parse(input).unwrap();
+        let parsed = parse_bytes(input).unwrap();
 
         assert_eq!(parsed.len(), 2);
 
@@ -167,26 +196,57 @@ STATUS: PENDING
     }
 
     #[test]
-    fn parses_last_transaction_without_trailing_blank_line() {
-        let input = r#"TX_ID: 9
-TX_TYPE: WITHDRAWAL
-FROM_USER_ID: 55
-TO_USER_ID: 0
-AMOUNT: -500
-TIMESTAMP: 1700000200
-STATUS: FAILURE"#;
+    fn round_trips_through_write_to_and_from_read() {
+        let first = tx(
+            9,
+            TxType::Withdrawal,
+            55,
+            0,
+            -500,
+            1_700_000_200,
+            TxStatus::Failure,
+            Some("atm"),
+        );
+        let second = tx(
+            10,
+            TxType::Deposit,
+            0,
+            55,
+            750,
+            1_700_000_300,
+            TxStatus::Success,
+            None,
+        );
 
-        let parsed = parse(input).unwrap();
+        let bytes = write_bytes(&[first, second]);
+        let parsed = parse_bytes(&bytes).unwrap();
 
-        assert_eq!(parsed.len(), 1);
-        assert_eq!(parsed[0].tx_id, 9);
-        assert!(matches!(parsed[0].tx_type, TxType::Withdrawal));
-        assert!(matches!(parsed[0].status, TxStatus::Failure));
+        assert_eq!(parsed.len(), 2);
+
+        let first = &parsed[0];
+        assert_eq!(first.tx_id, 9);
+        assert!(matches!(first.tx_type, TxType::Withdrawal));
+        assert_eq!(first.from_user_id, 55);
+        assert_eq!(first.to_user_id, 0);
+        assert_eq!(first.amount, -500);
+        assert_eq!(first.timestamp, 1_700_000_200);
+        assert!(matches!(first.status, TxStatus::Failure));
+        assert_eq!(first.description.as_deref(), Some("atm"));
+
+        let second = &parsed[1];
+        assert_eq!(second.tx_id, 10);
+        assert!(matches!(second.tx_type, TxType::Deposit));
+        assert_eq!(second.from_user_id, 0);
+        assert_eq!(second.to_user_id, 55);
+        assert_eq!(second.amount, 750);
+        assert_eq!(second.timestamp, 1_700_000_300);
+        assert!(matches!(second.status, TxStatus::Success));
+        assert_eq!(second.description, None);
     }
 
     #[test]
     fn rejects_unknown_field_name() {
-        let input = r#"TX_ID: 1
+        let input = br#"TX_ID: 1
 TX_TYPE: DEPOSIT
 FROM_USER_ID: 0
 TO_USER_ID: 77
@@ -196,14 +256,14 @@ STATUS: SUCCESS
 NOTE: nope
 "#;
 
-        let err = parse(input).unwrap_err();
+        let err = parse_bytes(input).unwrap_err();
 
         assert!(matches!(err, ReaderError::Field));
     }
 
     #[test]
     fn rejects_incomplete_transaction() {
-        let input = r#"TX_ID: 1
+        let input = br#"TX_ID: 1
 TX_TYPE: DEPOSIT
 FROM_USER_ID: 0
 TO_USER_ID: 77
@@ -211,18 +271,18 @@ AMOUNT: 1500
 TIMESTAMP: 1700000000
 "#;
 
-        let err = parse(input).unwrap_err();
+        let err = parse_bytes(input).unwrap_err();
 
         assert!(matches!(err, ReaderError::Transaction));
     }
 
     #[test]
     fn rejects_corrupted_text_line() {
-        let input = r#"TX_ID 1
+        let input = br#"TX_ID 1
 TX_TYPE: DEPOSIT
 "#;
 
-        let err = parse(input).unwrap_err();
+        let err = parse_bytes(input).unwrap_err();
 
         assert!(matches!(err, ReaderError::TextCorrupt));
     }

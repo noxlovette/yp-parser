@@ -1,6 +1,5 @@
-use std::{fs::File, io::BufReader};
-
 use clap::Parser as ClapParser;
+use std::{fs::File, io::BufReader};
 use yp_parser::{BinaryParser, CsvParser, Format, Parser, TextParser};
 
 #[derive(Debug, ClapParser)]
