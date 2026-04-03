@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     let set1: HashSet<_> = decoded1.into_iter().collect();
     let set2: HashSet<_> = decoded2.into_iter().collect();
     let diff: HashSet<_> = set1.symmetric_difference(&set2).collect();
-    if diff.len() == 0 {
+    if diff.is_empty() {
         println!(
             "The items in files {} and {} are identical.",
             args.file1, args.file2

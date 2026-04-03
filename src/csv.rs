@@ -32,19 +32,19 @@ impl Parser for CsvParser {
         w.write_all(b"\n")?;
         for tx in input {
             w.write_all(tx.tx_id.to_string().as_bytes().as_ref())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.tx_type.as_str().as_bytes().as_ref())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.from_user_id.to_string().as_bytes().as_ref())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.to_user_id.to_string().as_bytes().as_ref())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.amount.to_string().as_bytes().as_ref())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.timestamp.to_string().as_bytes().as_ref())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.status.as_str().as_bytes())?;
-            w.write(b",")?;
+            w.write_all(b",")?;
             w.write_all(tx.description.as_deref().unwrap_or("").as_bytes())?;
             w.write_all(b"\n")?;
         }
@@ -55,12 +55,12 @@ impl Parser for CsvParser {
 }
 
 impl Transaction {
-    fn from_fields<'a, I>(mut fields: I) -> ReaderResult<Self>
+    fn from_fields<'a, I>(fields: I) -> ReaderResult<Self>
     where
         I: Iterator<Item = (usize, &'a str)>,
     {
         let mut tx = TransactionPartial::default();
-        while let Some((i, f)) = fields.next() {
+        for (i, f) in fields {
             match i {
                 0 => {
                     tx.tx_id(f.parse()?);
