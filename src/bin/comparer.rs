@@ -1,6 +1,6 @@
 use clap::Parser as ClapParser;
-use std::{collections::HashSet, fs::File, io::BufReader};
-use yp_parser::{BinaryParser, CsvParser, Format, Parser, TextParser};
+use std::{collections::HashMap, fs::File, io::BufReader};
+use yp_parser::{BinaryParser, CsvParser, Format, Parser, TextParser, Transaction};
 
 #[derive(ClapParser, Debug)]
 struct Args {
@@ -36,9 +36,9 @@ fn main() -> anyhow::Result<()> {
         Csv => CsvParser::from_read(&mut buf2)?,
     };
 
-    let set1: HashSet<_> = decoded1.into_iter().collect();
-    let set2: HashSet<_> = decoded2.into_iter().collect();
-    let diff: HashSet<_> = set1.symmetric_difference(&set2).collect();
+    let counts1 = transaction_counts(decoded1);
+    let counts2 = transaction_counts(decoded2);
+    let diff = transaction_differences(&counts1, &counts2);
     if diff.is_empty() {
         println!(
             "The items in files {} and {} are identical.",
@@ -46,11 +46,43 @@ fn main() -> anyhow::Result<()> {
         )
     } else {
         println!("The following transactions differ in given files:\n");
-        for tx in &diff {
+        for (tx, count1, count2) in &diff {
             println!("{tx}");
+            println!("COUNT_IN_FILE1: {count1}");
+            println!("COUNT_IN_FILE2: {count2}\n");
         }
         println!("Number of differing items: {}", diff.len())
     }
 
     Ok(())
+}
+
+fn transaction_counts(transactions: Vec<Transaction>) -> HashMap<Transaction, usize> {
+    let mut counts = HashMap::new();
+    for tx in transactions {
+        *counts.entry(tx).or_insert(0) += 1;
+    }
+    counts
+}
+
+fn transaction_differences(
+    counts1: &HashMap<Transaction, usize>,
+    counts2: &HashMap<Transaction, usize>,
+) -> Vec<(Transaction, usize, usize)> {
+    let mut diff = Vec::new();
+
+    for (tx, count1) in counts1 {
+        let count2 = counts2.get(tx).copied().unwrap_or(0);
+        if *count1 != count2 {
+            diff.push((tx.clone(), *count1, count2));
+        }
+    }
+
+    for (tx, count2) in counts2 {
+        if !counts1.contains_key(tx) {
+            diff.push((tx.clone(), 0, *count2));
+        }
+    }
+
+    diff
 }

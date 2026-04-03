@@ -11,15 +11,10 @@ impl Parser for BinaryParser {
 
         loop {
             let mut magic = [0u8; MAGIC.len()];
-            match r.read_exact(&mut magic) {
-                Ok(()) => {}
-                Err(err) => {
-                    if err.kind() == std::io::ErrorKind::UnexpectedEof {
-                        break;
-                    } else {
-                        return Err(err.into());
-                    }
-                }
+            match r.read(&mut magic[..1])? {
+                0 => break,
+                1 => r.read_exact(&mut magic[1..])?,
+                _ => unreachable!(),
             }
 
             if magic != *MAGIC {
@@ -288,6 +283,26 @@ mod tests {
             Some("atm"),
         )]);
         bytes.pop();
+        let mut cursor = Cursor::new(bytes);
+
+        let err = BinaryParser::from_read(&mut cursor).unwrap_err();
+
+        assert!(matches!(err, ReaderError::Io(_)));
+    }
+
+    #[test]
+    fn rejects_truncated_record_magic_at_end_of_stream() {
+        let mut bytes = write_bytes(&[tx(
+            1,
+            TxType::Deposit,
+            0,
+            1,
+            10,
+            100,
+            TxStatus::Success,
+            None,
+        )]);
+        bytes.extend_from_slice(b"XYZ");
         let mut cursor = Cursor::new(bytes);
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();

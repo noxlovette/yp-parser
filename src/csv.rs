@@ -3,6 +3,51 @@ pub struct CsvParser;
 
 const HEADER: &str = "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
 
+fn parse_csv_line(line: &str) -> ReaderResult<Vec<String>> {
+    let mut fields = Vec::new();
+    let mut field = String::new();
+    let mut chars = line.chars().peekable();
+    let mut in_quotes = false;
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' => {
+                if in_quotes {
+                    if chars.peek() == Some(&'"') {
+                        field.push('"');
+                        chars.next();
+                    } else {
+                        in_quotes = false;
+                    }
+                } else if field.is_empty() {
+                    in_quotes = true;
+                } else {
+                    return Err(ReaderError::CsvCorrupt);
+                }
+            }
+            ',' if !in_quotes => {
+                fields.push(std::mem::take(&mut field));
+            }
+            _ => field.push(ch),
+        }
+    }
+
+    if in_quotes {
+        return Err(ReaderError::CsvCorrupt);
+    }
+
+    fields.push(field);
+    Ok(fields)
+}
+
+fn escape_csv_field(field: &str) -> String {
+    if field.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", field.replace('"', "\"\""))
+    } else {
+        field.to_owned()
+    }
+}
+
 impl Parser for CsvParser {
     fn from_read<R: std::io::Read>(r: &mut R) -> crate::ReaderResult<Vec<crate::Transaction>> {
         let mut buf = String::new();
@@ -14,8 +59,8 @@ impl Parser for CsvParser {
 
         if iter.next().is_some_and(|l| l == HEADER) {
             for line in iter.filter(|l| !l.is_empty()) {
-                let fields = line.split(',');
-                output.push(Transaction::from_fields(fields.enumerate())?)
+                let fields = parse_csv_line(line)?;
+                output.push(Transaction::from_fields(fields.into_iter().enumerate())?)
             }
         } else {
             return Err(ReaderError::CsvCorrupt);
@@ -45,7 +90,8 @@ impl Parser for CsvParser {
             w.write_all(b",")?;
             w.write_all(tx.status.as_str().as_bytes())?;
             w.write_all(b",")?;
-            w.write_all(tx.description.as_deref().unwrap_or("").as_bytes())?;
+            let description = escape_csv_field(tx.description.as_deref().unwrap_or(""));
+            w.write_all(description.as_bytes())?;
             w.write_all(b"\n")?;
         }
         w.flush()?;
@@ -55,9 +101,9 @@ impl Parser for CsvParser {
 }
 
 impl Transaction {
-    fn from_fields<'a, I>(fields: I) -> ReaderResult<Self>
+    fn from_fields<I>(fields: I) -> ReaderResult<Self>
     where
-        I: Iterator<Item = (usize, &'a str)>,
+        I: Iterator<Item = (usize, String)>,
     {
         let mut tx = TransactionPartial::default();
         for (i, f) in fields {
@@ -84,7 +130,7 @@ impl Transaction {
                     tx.status(f.parse()?);
                 }
                 7 => {
-                    tx.description(Some(f.trim_matches('"').to_string()));
+                    tx.description(Some(f));
                 }
                 _ => return Err(ReaderError::CsvCorrupt),
             }
@@ -245,5 +291,36 @@ mod tests {
         let err = parse_bytes(input).unwrap_err();
 
         assert!(matches!(err, ReaderError::Transaction));
+    }
+
+    #[test]
+    fn parses_quoted_description_with_comma() {
+        let input = br#"TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION
+1,DEPOSIT,0,77,1500,1700000000,SUCCESS,"hello,world"
+"#;
+
+        let parsed = parse_bytes(input).unwrap();
+
+        assert_eq!(parsed[0].description.as_deref(), Some("hello,world"));
+    }
+
+    #[test]
+    fn round_trips_quoted_description() {
+        let bytes = write_bytes(&[tx(
+            11,
+            TxType::Deposit,
+            0,
+            55,
+            750,
+            1_700_000_300,
+            TxStatus::Success,
+            Some("hello,\"world\""),
+        )]);
+
+        let rendered = String::from_utf8(bytes.clone()).unwrap();
+        assert!(rendered.contains("\"hello,\"\"world\"\"\""));
+
+        let parsed = parse_bytes(&bytes).unwrap();
+        assert_eq!(parsed[0].description.as_deref(), Some("hello,\"world\""));
     }
 }

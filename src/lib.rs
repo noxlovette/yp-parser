@@ -33,7 +33,7 @@ impl Transaction {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Transaction {
     tx_id: u64,
     tx_type: TxType,
