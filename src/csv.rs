@@ -154,7 +154,7 @@ mod tests {
         tx_type: TxType,
         from_user_id: u64,
         to_user_id: u64,
-        amount: i128,
+        amount: i64,
         timestamp: u64,
         status: TxStatus,
         description: Option<&str>,

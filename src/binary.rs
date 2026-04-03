@@ -63,7 +63,7 @@ impl TryFrom<&[u8]> for Transaction {
         let tx_type = tx_type.try_into()?;
         let from_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
         let to_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let amount = i128::from_be_bytes(take(bytes, &mut cursor)?);
+        let amount = i64::from_be_bytes(take(bytes, &mut cursor)?);
         let timestamp = u64::from_be_bytes(take(bytes, &mut cursor)?);
         let status = *bytes.get(cursor).ok_or(ReaderError::Transaction)?;
         cursor += 1;
@@ -175,7 +175,7 @@ mod tests {
         tx_type: TxType,
         from_user_id: u64,
         to_user_id: u64,
-        amount: i128,
+        amount: i64,
         timestamp: u64,
         status: TxStatus,
         description: Option<&str>,

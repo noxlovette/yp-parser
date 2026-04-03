@@ -61,8 +61,8 @@ pub struct Transaction {
     /// Сумма транзакции в наименьших единицах валюты (например, в центах).
     ///
     /// *Вопрос! Согласно спецификации, должен быть негативным i64 только для бинарного формата, и u64 для остальных двух.
-    /// Я решил использовать i128, чтобы удовлетворить спецификацию и при этом использовать одну структуру на весь крейт*
-    amount: i128,
+    /// Можно в теории сделать еще одну структуру, но это дупликация кода, и цель задания все же парсинг*
+    amount: i64,
     /// Время совершения транзакции в формате Unix-времени (миллисекунды с начала эпохи).
     timestamp: u64,
     /// Статус транзакции.
@@ -164,7 +164,7 @@ pub(crate) struct TransactionPartial {
     tx_type: Option<TxType>,
     from_user_id: Option<u64>,
     to_user_id: Option<u64>,
-    amount: Option<i128>,
+    amount: Option<i64>,
     timestamp: Option<u64>,
     status: Option<TxStatus>,
     description: Option<String>,
@@ -224,7 +224,7 @@ impl TransactionPartial {
     fn to_user_id(&mut self, tui: u64) {
         self.to_user_id = Some(tui)
     }
-    fn amount(&mut self, a: i128) {
+    fn amount(&mut self, a: i64) {
         self.amount = Some(a)
     }
     fn timestamp(&mut self, t: u64) {
