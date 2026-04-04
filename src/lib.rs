@@ -4,12 +4,11 @@
 //! [`BinaryParser`], [`CsvParser`] и [`TextParser`].
 #![warn(missing_docs)]
 
-use clap::ValueEnum;
 use std::{
     fmt::Display,
     io::{Read, Write},
-    str::FromStr,
 };
+use strum::{AsRefStr, Display as EnumDisplay, EnumString, VariantNames};
 
 pub use binary::BinaryParser;
 pub use csv::CsvParser;
@@ -30,7 +29,8 @@ pub trait Parser: Sized {
 }
 
 /// Поддерживаемые форматы сериализации.
-#[derive(Debug, Default, Clone, ValueEnum)]
+#[derive(Debug, Default, Clone, EnumString, VariantNames)]
+#[strum(serialize_all = "lowercase")]
 pub enum Format {
     /// CSV-представление с заголовком.
     Csv,
@@ -60,9 +60,6 @@ pub struct Transaction {
     /// Идентификатор пользователя-получателя. Для системных списаний (`WITHDRAWAL`) может быть `0`.
     to_user_id: u64,
     /// Сумма транзакции в наименьших единицах валюты (например, в центах).
-    ///
-    /// *Вопрос! Согласно спецификации, должен быть негативным i64 только для бинарного формата, и u64 для остальных двух.
-    /// Можно в теории сделать еще одну структуру, но это дупликация кода, и цель задания все же парсинг*
     amount: i64,
     /// Время совершения транзакции в формате Unix-времени (миллисекунды с начала эпохи).
     timestamp: u64,
@@ -73,7 +70,12 @@ pub struct Transaction {
 }
 
 /// Статус транзакции.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, AsRefStr, EnumDisplay, EnumString)]
+#[strum(
+    serialize_all = "SCREAMING_SNAKE_CASE",
+    parse_err_ty = ReaderError,
+    parse_err_fn = parse_tx_status_error
+)]
 pub enum TxStatus {
     /// Транзакция завершилась успешно.
     Success,
@@ -85,7 +87,12 @@ pub enum TxStatus {
 }
 
 /// Тип транзакции.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, AsRefStr, EnumDisplay, EnumString)]
+#[strum(
+    serialize_all = "SCREAMING_SNAKE_CASE",
+    parse_err_ty = ReaderError,
+    parse_err_fn = parse_tx_type_error
+)]
 pub enum TxType {
     /// Пополнение счета.
     Deposit,
@@ -112,53 +119,6 @@ impl Display for Transaction {
     }
 }
 
-impl Display for TxStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use TxStatus::*;
-        let txt = match self {
-            Success => "SUCCESS",
-            Failure => "FAILURE",
-            Pending => "PENDING",
-        };
-
-        write!(f, "{txt}")
-    }
-}
-
-impl TxStatus {
-    fn as_str(&self) -> &'static str {
-        use TxStatus::*;
-        match self {
-            Success => "SUCCESS",
-            Failure => "FAILURE",
-            Pending => "PENDING",
-        }
-    }
-}
-
-impl Display for TxType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use TxType::*;
-        let txt = match self {
-            Deposit => "DEPOSIT",
-            Transfer => "TRANSFER",
-            Withdrawal => "WITHDRAWAL",
-        };
-        write!(f, "{txt}")
-    }
-}
-
-impl TxType {
-    fn as_str(&self) -> &'static str {
-        use TxType::*;
-        match self {
-            Deposit => "DEPOSIT",
-            Transfer => "TRANSFER",
-            Withdrawal => "WITHDRAWAL",
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub(crate) struct TransactionPartial {
     tx_id: Option<u64>,
@@ -171,32 +131,12 @@ pub(crate) struct TransactionPartial {
     description: Option<String>,
 }
 
-impl FromStr for TxType {
-    type Err = ReaderError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use TxType::*;
-        let t = match s {
-            "DEPOSIT" => Deposit,
-            "TRANSFER" => Transfer,
-            "WITHDRAWAL" => Withdrawal,
-            _ => return Err(ReaderError::TxType),
-        };
-        Ok(t)
-    }
+fn parse_tx_type_error(_: &str) -> ReaderError {
+    ReaderError::TxType
 }
 
-impl FromStr for TxStatus {
-    type Err = ReaderError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use TxStatus::*;
-        let t = match s {
-            "SUCCESS" => Success,
-            "FAILURE" => Failure,
-            "PENDING" => Pending,
-            _ => return Err(ReaderError::TxStatus),
-        };
-        Ok(t)
-    }
+fn parse_tx_status_error(_: &str) -> ReaderError {
+    ReaderError::TxStatus
 }
 
 impl TransactionPartial {
@@ -247,8 +187,12 @@ impl TryFrom<TransactionPartial> for Transaction {
         Ok(Self {
             tx_id: value.tx_id.ok_or_else(|| missing_field("tx_id"))?,
             tx_type: value.tx_type.ok_or_else(|| missing_field("tx_type"))?,
-            from_user_id: value.from_user_id.ok_or_else(|| missing_field("from_user_id"))?,
-            to_user_id: value.to_user_id.ok_or_else(|| missing_field("to_user_id"))?,
+            from_user_id: value
+                .from_user_id
+                .ok_or_else(|| missing_field("from_user_id"))?,
+            to_user_id: value
+                .to_user_id
+                .ok_or_else(|| missing_field("to_user_id"))?,
             amount: value.amount.ok_or_else(|| missing_field("amount"))?,
             timestamp: value.timestamp.ok_or_else(|| missing_field("timestamp"))?,
             status: value.status.ok_or_else(|| missing_field("status"))?,

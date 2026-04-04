@@ -8,10 +8,10 @@ struct Args {
     #[arg(long)]
     input: String,
 
-    #[arg(value_enum, long)]
+    #[arg(long)]
     input_format: Format,
 
-    #[arg(value_enum, long)]
+    #[arg(long)]
     output_format: Format,
 }
 

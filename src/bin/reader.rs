@@ -5,7 +5,7 @@ use yp_parser::{BinaryParser, CsvParser, Format, Parser, TextParser};
 #[derive(ClapParser, Debug)]
 #[command(version, about)]
 struct Args {
-    #[arg(value_enum)]
+    #[arg(long)]
     format: Format,
 
     path: String,

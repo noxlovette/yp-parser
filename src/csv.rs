@@ -94,7 +94,7 @@ impl Parser for CsvParser {
         for tx in input {
             w.write_all(tx.tx_id.to_string().as_bytes().as_ref())?;
             w.write_all(b",")?;
-            w.write_all(tx.tx_type.as_str().as_bytes().as_ref())?;
+            w.write_all(tx.tx_type.as_ref().as_bytes())?;
             w.write_all(b",")?;
             w.write_all(tx.from_user_id.to_string().as_bytes().as_ref())?;
             w.write_all(b",")?;
@@ -104,7 +104,7 @@ impl Parser for CsvParser {
             w.write_all(b",")?;
             w.write_all(tx.timestamp.to_string().as_bytes().as_ref())?;
             w.write_all(b",")?;
-            w.write_all(tx.status.as_str().as_bytes())?;
+            w.write_all(tx.status.as_ref().as_bytes())?;
             w.write_all(b",")?;
             let description = Self::escape_csv_field(tx.description.as_deref().unwrap_or(""));
             w.write_all(description.as_bytes())?;
