@@ -5,51 +5,65 @@ pub struct CsvParser;
 
 const HEADER: &str = "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
 
-fn parse_csv_line(line: &str) -> ReaderResult<Vec<String>> {
-    let mut fields = Vec::new();
-    let mut field = String::new();
-    let mut chars = line.chars().peekable();
-    let mut in_quotes = false;
+struct CsvFields;
 
-    while let Some(ch) = chars.next() {
-        match ch {
-            '"' => {
-                if in_quotes {
-                    if chars.peek() == Some(&'"') {
-                        field.push('"');
-                        chars.next();
+impl CsvFields {
+    const TX_ID: usize = 0;
+    const TX_TYPE: usize = 1;
+    const FROM_USER_ID: usize = 2;
+    const TO_USER_ID: usize = 3;
+    const AMOUNT: usize = 4;
+    const TIMESTAMP: usize = 5;
+    const STATUS: usize = 6;
+    const DESCRIPTION: usize = 7;
+}
+
+impl CsvParser {
+    fn parse_csv_line(line: &str) -> ReaderResult<Vec<String>> {
+        let mut fields = Vec::new();
+        let mut field = String::new();
+        let mut chars = line.chars().peekable();
+        let mut in_quotes = false;
+
+        while let Some(ch) = chars.next() {
+            match ch {
+                '"' => {
+                    if in_quotes {
+                        if chars.peek() == Some(&'"') {
+                            field.push('"');
+                            chars.next();
+                        } else {
+                            in_quotes = false;
+                        }
+                    } else if field.is_empty() {
+                        in_quotes = true;
                     } else {
-                        in_quotes = false;
+                        return Err(ReaderError::CsvCorrupt);
                     }
-                } else if field.is_empty() {
-                    in_quotes = true;
-                } else {
-                    return Err(ReaderError::CsvCorrupt);
                 }
+                ',' if !in_quotes => {
+                    fields.push(std::mem::take(&mut field));
+                }
+                _ => field.push(ch),
             }
-            ',' if !in_quotes => {
-                fields.push(std::mem::take(&mut field));
-            }
-            _ => field.push(ch),
+        }
+
+        if in_quotes {
+            return Err(ReaderError::CsvCorrupt);
+        }
+
+        fields.push(field);
+        Ok(fields)
+    }
+
+    fn escape_csv_field(field: &str) -> String {
+        if field.contains([',', '"', '\n', '\r']) {
+            format!("\"{}\"", field.replace('"', "\"\""))
+        } else {
+            field.to_owned()
         }
     }
-
-    if in_quotes {
-        return Err(ReaderError::CsvCorrupt);
-    }
-
-    fields.push(field);
-    Ok(fields)
 }
-
-fn escape_csv_field(field: &str) -> String {
-    if field.contains([',', '"', '\n', '\r']) {
-        format!("\"{}\"", field.replace('"', "\"\""))
-    } else {
-        field.to_owned()
-    }
-}
-
 impl Parser for CsvParser {
     fn from_read<R: std::io::Read>(r: &mut R) -> crate::ReaderResult<Vec<crate::Transaction>> {
         let mut buf = String::new();
@@ -61,7 +75,7 @@ impl Parser for CsvParser {
 
         if iter.next().is_some_and(|l| l == HEADER) {
             for line in iter.filter(|l| !l.is_empty()) {
-                let fields = parse_csv_line(line)?;
+                let fields = Self::parse_csv_line(line)?;
                 output.push(Transaction::from_fields(fields.into_iter().enumerate())?)
             }
         } else {
@@ -92,7 +106,7 @@ impl Parser for CsvParser {
             w.write_all(b",")?;
             w.write_all(tx.status.as_str().as_bytes())?;
             w.write_all(b",")?;
-            let description = escape_csv_field(tx.description.as_deref().unwrap_or(""));
+            let description = Self::escape_csv_field(tx.description.as_deref().unwrap_or(""));
             w.write_all(description.as_bytes())?;
             w.write_all(b"\n")?;
         }
@@ -110,28 +124,28 @@ impl Transaction {
         let mut tx = TransactionPartial::default();
         for (i, f) in fields {
             match i {
-                0 => {
+                CsvFields::TX_ID => {
                     tx.set_tx_id(f.parse()?);
                 }
-                1 => {
+                CsvFields::TX_TYPE => {
                     tx.set_tx_type(f.parse()?);
                 }
-                2 => {
+                CsvFields::FROM_USER_ID => {
                     tx.set_from_user_id(f.parse()?);
                 }
-                3 => {
+                CsvFields::TO_USER_ID => {
                     tx.set_to_user_id(f.parse()?);
                 }
-                4 => {
+                CsvFields::AMOUNT => {
                     tx.set_amount(f.parse()?);
                 }
-                5 => {
+                CsvFields::TIMESTAMP => {
                     tx.set_timestamp(f.parse()?);
                 }
-                6 => {
+                CsvFields::STATUS => {
                     tx.set_status(f.parse()?);
                 }
-                7 => {
+                CsvFields::DESCRIPTION => {
                     tx.set_description(Some(f));
                 }
                 _ => return Err(ReaderError::CsvCorrupt),
