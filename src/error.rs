@@ -8,6 +8,7 @@ pub(crate) type ReaderResult<T> = Result<T, ReaderError>;
 #[derive(Debug, Error)]
 pub enum WriterError {
     #[error("io error")]
+    /// Ошибка IO
     Io(#[from] io::Error),
 }
 
@@ -15,23 +16,34 @@ pub enum WriterError {
 #[derive(Debug, Error)]
 pub enum ReaderError {
     #[error("IO error")]
+    /// Ошибка IO
     Io(#[from] io::Error),
     #[error("Slice parsing error")]
+    /// Ошибка конвертации из slice
     Slice(#[from] TryFromSliceError),
     #[error("Int parsing error")]
+    /// Ошибка парсинга int
     Int(#[from] ParseIntError),
     #[error("Transaction parsing error")]
+    /// Ошибка парсинга транзакции
+    /// TODO: ДОБАВЬ СЮДА ПОЛЕ И ИНДЕКС
     Transaction,
     #[error("TxType parsing error")]
+    /// Ошибка парсинга типа транзакции
     TxType,
     #[error("TxStatus parsing error")]
+    /// Ошибка парсинга статуса транзакции
     TxStatus,
     #[error("UTF8 error")]
+    /// Ошибка чтения UTF-8
     Utf(#[from] Utf8Error),
     #[error("Unknown field name")]
+    /// Незнакомое поле
     Field,
     #[error("Corrupted TXT file")]
+    /// Поврежденный .txt
     TextCorrupt,
     #[error("Corrupted CSV file")]
+    /// Поврежденный .csv
     CsvCorrupt,
 }

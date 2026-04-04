@@ -2,6 +2,7 @@
 //!
 //! Основная точка входа в API — трейт [`Parser`] и конкретные реализации:
 //! [`BinaryParser`], [`CsvParser`] и [`TextParser`].
+#![warn(missing_docs)]
 
 use clap::ValueEnum;
 use std::{
