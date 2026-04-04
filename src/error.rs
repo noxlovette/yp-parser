@@ -24,10 +24,14 @@ pub enum ReaderError {
     #[error("Int parsing error")]
     /// Ошибка парсинга int
     Int(#[from] ParseIntError),
-    #[error("Transaction parsing error")]
+    #[error("Transaction parsing error at idx {idx:?} while trying to read field {field:?}")]
     /// Ошибка парсинга транзакции
-    /// TODO: ДОБАВЬ СЮДА ПОЛЕ И ИНДЕКС
-    Transaction,
+    Transaction {
+        /// Где произошла ошибка
+        idx: usize,
+        /// Какое поле пытались парсить
+        field: String,
+    },
     #[error("TxType parsing error")]
     /// Ошибка парсинга типа транзакции
     TxType,

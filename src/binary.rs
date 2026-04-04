@@ -18,16 +18,25 @@ impl Parser for BinaryParser {
             }
 
             if magic != *MAGIC {
-                return Err(ReaderError::Transaction);
+                return Err(ReaderError::Transaction {
+                    field: "Magic".into(),
+                    idx: 0,
+                });
             }
 
             let mut len = [0u8; 4];
             r.read_exact(&mut len)?;
             let payload_len = u32::from_be_bytes(len) as usize;
 
-            let mut payload = vec![0u8; payload_len];
-            r.read_exact(&mut payload)?;
-            output.push(payload.as_slice().try_into()?);
+            let mut payload = r.take(payload_len as u64);
+            let tx = Transaction::read_bin(&mut payload)?;
+            if payload.limit() != 0 {
+                return Err(ReaderError::Transaction {
+                    field: "Payload".into(),
+                    idx: 0,
+                });
+            }
+            output.push(tx);
         }
 
         Ok(output)
@@ -40,59 +49,6 @@ impl Parser for BinaryParser {
         w.flush()?;
 
         Ok(())
-    }
-}
-
-impl TryFrom<&[u8]> for Transaction {
-    type Error = ReaderError;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let mut cursor = 0;
-
-        fn take<const N: usize>(bytes: &[u8], cursor: &mut usize) -> ReaderResult<[u8; N]> {
-            let slice = bytes
-                .get(*cursor..*cursor + N)
-                .ok_or(ReaderError::Transaction)?;
-            *cursor += N;
-            Ok(slice.try_into()?)
-        }
-
-        let tx_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let tx_type = *bytes.get(cursor).ok_or(ReaderError::Transaction)?;
-        cursor += 1;
-        let tx_type = tx_type.try_into()?;
-        let from_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let to_user_id = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let amount = i64::from_be_bytes(take(bytes, &mut cursor)?);
-        let timestamp = u64::from_be_bytes(take(bytes, &mut cursor)?);
-        let status = *bytes.get(cursor).ok_or(ReaderError::Transaction)?;
-        cursor += 1;
-        let status = status.try_into()?;
-        let desc_len = u32::from_be_bytes(take(bytes, &mut cursor)?) as usize;
-        let description = if desc_len == 0 {
-            None
-        } else {
-            let desc_bytes = bytes
-                .get(cursor..cursor + desc_len)
-                .ok_or(ReaderError::Transaction)?;
-            cursor += desc_len;
-            Some(str::from_utf8(desc_bytes)?.trim_matches('"').to_string())
-        };
-
-        if cursor != bytes.len() {
-            return Err(ReaderError::Transaction);
-        }
-
-        Ok(Self {
-            tx_id,
-            tx_type,
-            from_user_id,
-            to_user_id,
-            amount,
-            timestamp,
-            status,
-            description,
-        })
     }
 }
 
@@ -143,6 +99,45 @@ impl From<TxStatus> for u8 {
 }
 
 impl Transaction {
+    fn read_bin<R: Read>(r: &mut R) -> ReaderResult<Self> {
+        fn read_array<const N: usize, R: Read>(r: &mut R) -> ReaderResult<[u8; N]> {
+            let mut buf = [0u8; N];
+            r.read_exact(&mut buf)?;
+            Ok(buf)
+        }
+
+        fn read_u8<R: Read>(r: &mut R) -> ReaderResult<u8> {
+            Ok(read_array::<1, _>(r)?[0])
+        }
+
+        let tx_id = u64::from_be_bytes(read_array(r)?);
+        let tx_type = read_u8(r)?.try_into()?;
+        let from_user_id = u64::from_be_bytes(read_array(r)?);
+        let to_user_id = u64::from_be_bytes(read_array(r)?);
+        let amount = i64::from_be_bytes(read_array(r)?);
+        let timestamp = u64::from_be_bytes(read_array(r)?);
+        let status = read_u8(r)?.try_into()?;
+        let desc_len = u32::from_be_bytes(read_array(r)?) as usize;
+        let description = if desc_len == 0 {
+            None
+        } else {
+            let mut desc_bytes = vec![0u8; desc_len];
+            r.read_exact(&mut desc_bytes)?;
+            Some(std::str::from_utf8(&desc_bytes)?.trim_matches('"').to_string())
+        };
+
+        Ok(Self {
+            tx_id,
+            tx_type,
+            from_user_id,
+            to_user_id,
+            amount,
+            timestamp,
+            status,
+            description,
+        })
+    }
+
     fn write_bin(&self, w: &mut impl Write) -> WriterResult<()> {
         let mut p = Vec::new();
         p.extend_from_slice(&self.tx_id.to_be_bytes());
@@ -266,7 +261,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ReaderError::Transaction));
+        assert!(matches!(err, ReaderError::Transaction { .. }));
     }
 
     #[test]
@@ -369,7 +364,7 @@ mod tests {
 
         let err = BinaryParser::from_read(&mut cursor).unwrap_err();
 
-        assert!(matches!(err, ReaderError::Transaction));
+        assert!(matches!(err, ReaderError::Transaction { .. }));
     }
 
     #[test]

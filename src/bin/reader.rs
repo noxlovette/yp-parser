@@ -1,5 +1,5 @@
 use clap::Parser as ClapParser;
-use std::fs::File;
+use std::{fs::File, io::BufReader};
 use yp_parser::{BinaryParser, CsvParser, Format, Parser, TextParser};
 
 #[derive(ClapParser, Debug)]
@@ -13,12 +13,13 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let mut file = File::open(args.path)?;
+    let file = File::open(args.path)?;
+    let mut buf = BufReader::new(file);
 
     let output = match args.format {
-        Format::Binary => BinaryParser::from_read(&mut file)?,
-        Format::Txt => TextParser::from_read(&mut file)?,
-        Format::Csv => CsvParser::from_read(&mut file)?,
+        Format::Binary => BinaryParser::from_read(&mut buf)?,
+        Format::Txt => TextParser::from_read(&mut buf)?,
+        Format::Csv => CsvParser::from_read(&mut buf)?,
     };
 
     println!("TRANSACTIONS\n");

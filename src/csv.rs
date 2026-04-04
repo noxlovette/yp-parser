@@ -111,28 +111,28 @@ impl Transaction {
         for (i, f) in fields {
             match i {
                 0 => {
-                    tx.tx_id(f.parse()?);
+                    tx.set_tx_id(f.parse()?);
                 }
                 1 => {
-                    tx.tx_type(f.parse()?);
+                    tx.set_tx_type(f.parse()?);
                 }
                 2 => {
-                    tx.from_user_id(f.parse()?);
+                    tx.set_from_user_id(f.parse()?);
                 }
                 3 => {
-                    tx.to_user_id(f.parse()?);
+                    tx.set_to_user_id(f.parse()?);
                 }
                 4 => {
-                    tx.amount(f.parse()?);
+                    tx.set_amount(f.parse()?);
                 }
                 5 => {
-                    tx.timestamp(f.parse()?);
+                    tx.set_timestamp(f.parse()?);
                 }
                 6 => {
-                    tx.status(f.parse()?);
+                    tx.set_status(f.parse()?);
                 }
                 7 => {
-                    tx.description(Some(f));
+                    tx.set_description(Some(f));
                 }
                 _ => return Err(ReaderError::CsvCorrupt),
             }
@@ -292,7 +292,7 @@ mod tests {
 
         let err = parse_bytes(input).unwrap_err();
 
-        assert!(matches!(err, ReaderError::Transaction));
+        assert!(matches!(err, ReaderError::Transaction { .. }));
     }
 
     #[test]

@@ -84,28 +84,28 @@ impl TransactionPartial {
         use Fields::*;
         match field {
             TxId(id) => {
-                self.tx_id(id);
+                self.set_tx_id(id);
             }
             TxType(t) => {
-                self.tx_type(t);
+                self.set_tx_type(t);
             }
             FromUserId(id) => {
-                self.from_user_id(id);
+                self.set_from_user_id(id);
             }
             ToUserId(id) => {
-                self.to_user_id(id);
+                self.set_to_user_id(id);
             }
             Amount(a) => {
-                self.amount(a);
+                self.set_amount(a);
             }
             Timestamp(t) => {
-                self.timestamp(t);
+                self.set_timestamp(t);
             }
             Status(s) => {
-                self.status(s);
+                self.set_status(s);
             }
             Description(d) => {
-                self.description(d);
+                self.set_description(d);
             }
         }
     }
@@ -274,7 +274,7 @@ TIMESTAMP: 1700000000
 
         let err = parse_bytes(input).unwrap_err();
 
-        assert!(matches!(err, ReaderError::Transaction));
+        assert!(matches!(err, ReaderError::Transaction { .. }));
     }
 
     #[test]
